@@ -1,0 +1,72 @@
+name: Spotify GQL Hash & TOTP Scraper
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours
+  workflow_dispatch:          # manual trigger from Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5       # kill if something hangs
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run GQL hash scraper
+        id: scrape
+        run: |
+          python scraper.py 2>&1 | tee scrape.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Fail loudly if scraper errored
+        if: steps.scrape.outputs.exit_code != '0'
+        run: |
+          echo "Scraper exited with non-zero status. See log above."
+          exit 1
+
+      - name: Run TOTP secret extractor
+        id: extract
+        run: |
+          python extract_spotify_totp.py 2>&1 | tee extract.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Fail loudly if extractor errored
+        if: steps.extract.outputs.exit_code != '0'
+        run: |
+          echo "TOTP extractor exited with non-zero status. See log above."
+          exit 1
+
+      - name: Show results summary
+        run: |
+          COUNT=$(python -c "import json; d=json.load(open('hashes.json')); print(d.get('total_operations', len(d['operations'])))")
+          VERSION=$(python -c "import json; d=json.load(open('spotify_totp.json')); print(d[0]['v'])")
+          echo "### GQL operations found: $COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "### TOTP latest version: v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name  "HashBot"
+          git config user.email "bot@zimusic.dev"
+          git add hashes.json spotify_totp.json
+          if git diff --staged --quiet; then
+            echo "No changes — nothing to commit."
+          else
+            VERSION=$(python -c "import json; d=json.load(open('spotify_totp.json')); print(d[0]['v'])")
+            git commit -m "chore(spotify): update GQL hashes & TOTP secret v$VERSION [$(date -u +%Y-%m-%dT%H:%MZ)]"
+            git push
+            echo "Pushed updated hashes.json and spotify_totp.json"
+          fi
