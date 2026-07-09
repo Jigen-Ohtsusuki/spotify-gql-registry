@@ -2,7 +2,7 @@
 
 > Automated scraper that keeps Spotify's internal GraphQL operation hashes and TOTP secrets up to date — a background helper for [ZiMusic](https://github.com/jigen-ohtsusuki/zimusic).
 
-[![Update Hashes](https://img.shields.io/github/actions/workflow/status/Jigen-Ohtsusuki/spotify-gql-registry/update-hashes.yml?label=scraper&style=flat-square)](../../actions/workflows/update-hashes.yml)
+[![Update Hashes](https://img.shields.io/github/actions/workflow/status/Jigen-Ohtsusuki/spotify-gql-registry/update-hashes.yml?label=scraper&style=flat-square)](https://github.com/Jigen-Ohtsusuki/spotify-gql-registry/actions/workflows/update-hashes.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
 ---
